@@ -1,0 +1,39 @@
+{
+  "type": "panel",
+  "name": "Box Plot",
+  "id": "interstates-box-plot",
+  "info": {
+    "description": "A simple box plot",
+    "author": {
+      "name": "Aaron Koerner",
+      "url": "https://www.interstates.com"
+    },
+    "keywords": [
+      "box",
+      "plot",
+      "whisker",
+      "candle"
+    ],
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "links": [
+      {
+        "name": "Website",
+        "url": "https://github.com/grafana/simple-react-panel"
+      },
+      {
+        "name": "License",
+        "url": "https://github.com/grafana/simple-react-panel/blob/master/LICENSE"
+      }
+    ],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaVersion": "6.3.x",
+    "plugins": []
+  }
+}
