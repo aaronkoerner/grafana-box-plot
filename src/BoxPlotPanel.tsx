@@ -40,15 +40,15 @@ export const BoxPlotPanel: React.FC<Props> = ({ options, data, width, height }) 
   const numSeries = data.series.length;
 
   //const vals = values[0] !== undefined ? values[0].toArray() : [];
-  const min = Math.min(...values.map(val => (val === undefined ? 0 : Math.min(...val.toArray()))));
-  const max = Math.max(...values.map(val => (val === undefined ? 0 : Math.max(...val.toArray()))));
+  //const min = Math.min(...values.map(val => (val === undefined ? 0 : Math.min(...val.toArray()))));
+  //const max = Math.max(...values.map(val => (val === undefined ? 10 : Math.max(...val.toArray()))));
 
   const params = {
     width: options.seriesOrientation === 'horizontal' ? width - 20 : width / numSeries,
     height: options.seriesOrientation === 'horizontal' ? height / numSeries : height - 20,
     orientation: options.seriesOrientation,
-    min: options.autoscale ? Number((min - (max - min) / 10).toPrecision(2)) : options.minScale,
-    max: options.autoscale ? Number((max + (max - min) / 10).toPrecision(2)) : options.maxScale,
+    min: options.minScale, //options.autoscale ? Number((min - (max - min) / 10).toPrecision(2)) : options.minScale,
+    max: options.maxScale, //options.autoscale ? Number((max + (max - min) / 10).toPrecision(2)) : options.maxScale,
   };
 
   const plot = series => (
@@ -68,6 +68,7 @@ export const BoxPlotPanel: React.FC<Props> = ({ options, data, width, height }) 
         max: params.max,
         gridLines: options.gridLines,
         numTicks: options.numTicks,
+        autoScale: options.autoscale,
       }}
       stats={computeBoxplotStats(series.fields.find(field => field.name === 'Value').values.toArray())}
       options={options}
@@ -184,19 +185,21 @@ const Boxplot = ({
     chartPad,
     tickLabelWidth;
   const padding = 5;
-  const range = axis.max - axis.min;
+  const maxVal = axis.autoScale ? stats.max + (stats.max - stats.min) / 10 : axis.max;
+  const minVal = axis.autoScale ? stats.min - (stats.max - stats.min) / 10 : axis.min;
+  const range = maxVal - minVal;
   const labelHeight = 12;
   const labelWidth = 6 * axis.label.length;
 
-  if (Math.abs(axis.max) > Math.abs(axis.min)) {
-    tickLabelWidth = 8 * Math.ceil(Math.log10(Math.abs(axis.max)) + 2);
+  if (Math.abs(maxVal) > Math.abs(minVal)) {
+    tickLabelWidth = 8 * Math.ceil(Math.log10(Math.abs(maxVal)) + 2);
   } else {
-    tickLabelWidth = 8 * Math.ceil(Math.log10(Math.abs(axis.min)) + 2);
+    tickLabelWidth = 8 * Math.ceil(Math.log10(Math.abs(minVal)) + 2);
   }
 
   const ticks = new Array(axis.numTicks + 1);
   for (var i = 0; i < ticks.length; i++) {
-    ticks[i] = axis.min + (range * i) / axis.numTicks;
+    ticks[i] = minVal + (range * i) / axis.numTicks;
   }
 
   if (orientation === 'vertical') {
@@ -215,12 +218,13 @@ const Boxplot = ({
     labelTransforms = [`translate (0, ${height - labelHeight})`];
   } else {
     xMin = labelHeight;
-    labelPad = labelWidth;
-    xMax = height > 205 ? 200 : height - 2 * padding - labelHeight;
+    labelPad = tickLabelWidth / 2;
+    xMax = height > 200 + 2 * padding + 2 * labelHeight ? 200 : height - 2 * padding - 2 * labelHeight;
     xCenter = (xMax + xMin) / 2;
 
-    chartPad = tickLabelWidth / 2;
+    chartPad = tickLabelWidth / 2 + 5;
     chartHeight = width - 2 * padding - labelPad - chartPad;
+    //chartHeight = width - 2 * padding - chartPad;
     scale = chartHeight / range;
 
     // Coordinate system: +y at the right, +x to the top.
@@ -274,18 +278,18 @@ High Whisker: ${Math.round(whiskerHigh * 100) / 100}`;
     <line
       x1={xMin - 2 * padding}
       x2={axis.gridLines ? xMax : xMin - padding}
-      y1={scale * (tick - axis.min)}
-      y2={scale * (tick - axis.min)}
+      y1={scale * (tick - minVal)}
+      y2={scale * (tick - minVal)}
       strokeWidth={whiskerStrokeWidth}
       style={axis.gridLines ? gridStyle : whiskerStyle}
     />
   );
   const tickLabel = tick => (
     <text
-      x={orientation === 'vertical' ? tickLabelWidth : labelPad + scale * (tick - axis.min)}
+      x={orientation === 'vertical' ? tickLabelWidth : labelPad + scale * (tick - minVal)}
       y={
         orientation === 'vertical'
-          ? chartHeight + chartPad - scale * (tick - axis.min) + labelHeight / 2
+          ? chartHeight + chartPad - scale * (tick - minVal) + labelHeight / 2
           : height - 2 * padding - 1
       }
       fill="white"
@@ -326,7 +330,7 @@ High Whisker: ${Math.round(whiskerHigh * 100) / 100}`;
           key="box"
           x={xMin}
           width={xMax - xMin}
-          y={scale * (stats.quartile1 - axis.min)}
+          y={scale * (stats.quartile1 - minVal)}
           height={scale * (stats.quartile3 - stats.quartile1)}
           style={boxStyle}
         />
@@ -334,8 +338,8 @@ High Whisker: ${Math.round(whiskerHigh * 100) / 100}`;
           key="tick-low"
           x1={xMin}
           x2={xMax}
-          y1={scale * (whiskerLow - axis.min)}
-          y2={scale * (whiskerLow - axis.min)}
+          y1={scale * (whiskerLow - minVal)}
+          y2={scale * (whiskerLow - minVal)}
           strokeWidth={whiskerStrokeWidth}
           style={whiskerStyle}
         />
@@ -343,8 +347,8 @@ High Whisker: ${Math.round(whiskerHigh * 100) / 100}`;
           key="whisker-low"
           x1={xCenter}
           x2={xCenter}
-          y1={scale * (whiskerLow - axis.min)}
-          y2={scale * (stats.quartile1 - axis.min)}
+          y1={scale * (whiskerLow - minVal)}
+          y2={scale * (stats.quartile1 - minVal)}
           strokeWidth={whiskerStrokeWidth}
           style={whiskerStyle}
         />
@@ -353,8 +357,8 @@ High Whisker: ${Math.round(whiskerHigh * 100) / 100}`;
             key="median"
             x1={xMin}
             x2={xMax}
-            y1={scale * (stats.quartile2 - axis.min)}
-            y2={scale * (stats.quartile2 - axis.min)}
+            y1={scale * (stats.quartile2 - minVal)}
+            y2={scale * (stats.quartile2 - minVal)}
             strokeWidth={medianStrokeWidth}
             style={medianStyle}
           >
@@ -368,8 +372,8 @@ High Whisker: ${Math.round(whiskerHigh * 100) / 100}`;
             key="mean"
             x1={xMin}
             x2={xMax}
-            y1={scale * (stats.mean - axis.min)}
-            y2={scale * (stats.mean - axis.min)}
+            y1={scale * (stats.mean - minVal)}
+            y2={scale * (stats.mean - minVal)}
             strokeWidth={medianStrokeWidth}
             style={medianStyle}
           >
@@ -382,8 +386,8 @@ High Whisker: ${Math.round(whiskerHigh * 100) / 100}`;
           key="whisker-high"
           x1={xCenter}
           x2={xCenter}
-          y1={scale * (whiskerHigh - axis.min)}
-          y2={scale * (stats.quartile3 - axis.min)}
+          y1={scale * (whiskerHigh - minVal)}
+          y2={scale * (stats.quartile3 - minVal)}
           strokeWidth={whiskerStrokeWidth}
           style={whiskerStyle}
         />
@@ -391,8 +395,8 @@ High Whisker: ${Math.round(whiskerHigh * 100) / 100}`;
           key="tick-high"
           x1={xMin}
           x2={xMax}
-          y1={scale * (whiskerHigh - axis.min)}
-          y2={scale * (whiskerHigh - axis.min)}
+          y1={scale * (whiskerHigh - minVal)}
+          y2={scale * (whiskerHigh - minVal)}
           strokeWidth={whiskerStrokeWidth}
           style={whiskerStyle}
         />
@@ -401,7 +405,7 @@ High Whisker: ${Math.round(whiskerHigh * 100) / 100}`;
               <ellipse
                 key={'outlier-${index}'}
                 cx={xCenter}
-                cy={scale * (outlier - axis.min)}
+                cy={scale * (outlier - minVal)}
                 rx={outlierRadius}
                 ry={outlierRadius}
                 strokeWidth="0"
